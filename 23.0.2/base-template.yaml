@@ -1,0 +1,565 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  annotations:
+    description: filenet-template
+    tags: filenet
+  name: filenet-template
+objects:
+  - apiVersion: icp4a.ibm.com/v1
+    kind: ICP4ACluster
+    metadata:
+      namespace: cp4ba
+      name: icp4adeploy
+      labels:
+        app.kubernetes.io/instance: ibm-dba
+        app.kubernetes.io/managed-by: ibm-dba
+        app.kubernetes.io/name: ibm-dba
+        release: 23.0.2
+      namespace: cp4ba
+    spec:
+      appVersion: 23.0.2
+      ibm_license: "accept"
+      shared_configuration:
+        encryption_key_secret: ibm-iaws-shared-key-secret
+        sc_iam:
+            default_admin_username: "cpfsadmin"
+        no_log: false
+        show_sensitive_log: true
+        sc_deployment_fncm_license: "production"
+        sc_deployment_license: "production"
+        sc_deployment_context: "CP4A"
+        image_pull_secrets:
+        - ibm-entitlement-key
+        sc_image_repository: cp.icr.io
+        sc_deployment_profile_size: "small"
+        sc_deployment_patterns: "foundation,content"
+        sc_optional_components: 'cmis,css'
+        sc_deployment_type: Production
+        sc_deployment_platform: "OCP"
+
+        sc_egress_configuration:
+          sc_restricted_internet_access: false
+        sc_ingress_enable: false
+        trusted_certificate_list: []
+        storage_configuration:
+          sc_slow_file_storage_classname: ${FILE_STORAGE_CLASSNAME}
+          sc_medium_file_storage_classname: ${FILE_STORAGE_CLASSNAME}
+          sc_fast_file_storage_classname: ${FILE_STORAGE_CLASSNAME}
+          sc_block_storage_classname: ${BLOCK_STORAGE_CLASSNAME}
+      ldap_configuration:
+        ## The possible values are: "IBM Security Directory Server" or "Microsoft Active Directory"
+        lc_selected_ldap_type: "Custom"
+        ## The name of the LDAP server to connect
+        lc_ldap_server: ${LDAP_HOST}
+        ## The port of the LDAP server to connect.  Some possible values are: 389, 636, etc.
+        lc_ldap_port: "389"
+        ## The LDAP bind secret for LDAP authentication.  The secret is expected to have ldapUsername and ldapPassword keys.  Refer to Knowledge Center for more info.
+        lc_bind_secret: "ldap-bind-secret"
+        ## The LDAP base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+        lc_ldap_base_dn: "dc=cp,dc=internal"
+        ## Enable SSL/TLS for LDAP communication. Refer to Knowledge Center for more info.
+        lc_ldap_ssl_enabled: false
+        ## The LDAP user name attribute. Semicolon-separated list that must include the first RDN user distinguished names. One possible value is "*:uid" for TDS and "user:sAMAccountName" for AD. Refer to Knowledge Center for more info.
+        lc_ldap_user_name_attribute: "*:cn"
+        ## The LDAP user display name attribute. One possible value is "cn" for TDS and "sAMAccountName" for AD. Refer to Knowledge Center for more info.
+        lc_ldap_user_display_name_attr: "cn"
+        ## The LDAP group base DN.  For example, "dc=example,dc=com", "dc=abc,dc=com", etc
+        lc_ldap_group_base_dn: "ou=Groups,dc=cp,dc=internal"
+        ## The LDAP group name attribute.  One possible value is "*:cn" for TDS and "*:cn" for AD. Refer to Knowledge Center for more info.
+        lc_ldap_group_name_attribute: "*:cn"
+        ## The LDAP group display name attribute.  One possible value for both TDS and AD is "cn". Refer to Knowledge Center for more info.
+        lc_ldap_group_display_name_attr: "cn"
+        ## The LDAP group membership search filter string.  One possible value is "(|(&(objectclass=groupofnames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))" for TDS
+        ## and "(&(cn=%v)(objectcategory=group))" for AD.
+        lc_ldap_group_membership_search_filter: "(|(&(objectclass=groupOfNames)(member={0}))(&(objectclass=groupofuniquenames)(uniquemember={0})))"
+        ## The LDAP group membership ID map.  One possible value is "groupofnames:member" for TDS and "memberOf:member" for AD.
+        lc_ldap_group_member_id_map: "groupOfNames:member"
+        custom:
+          lc_user_filter: (&(uid=%v)(objectclass=inetOrgPerson))
+          lc_group_filter: "(&(cn=%v)(|(objectclass=groupOfNames)(objectclass=groupofuniquenames)(objectclass=groupofurls)))"
+      ## The beginning section of database configuration for CP4A
+      datasource_configuration:
+        dc_ssl_enabled: false
+        dc_gcd_datasource:
+          ## Provide the database type from your infrastructure.  The possible values are "db2" or "db2HADR" or "oracle" or "postgresql".
+          dc_database_type: "sqlserver"
+          dc_common_gcd_datasource_name: "FNGCDDS"
+          dc_common_gcd_xa_datasource_name: "FNGCDDSXA"
+          database_servername: "mssql.mssql.svc.cluster.local"
+          database_name: "GCDDB"
+          database_port: "1433"
+        dc_os_datasources:
+          - dc_database_type: "sqlserver"
+            dc_os_label: "os1"
+            dc_common_os_datasource_name: "FNOS1DS"
+            dc_common_os_xa_datasource_name: "FNOS1DSXA"
+            database_servername: "mssql.mssql.svc.cluster.local"
+            database_name: OS1DB
+            database_port: "1433"
+          - dc_database_type: "sqlserver"
+            dc_os_label: "os2"
+            dc_common_os_datasource_name: "FNOS2DS"
+            dc_common_os_xa_datasource_name: "FNOS2DSXA"
+            database_servername: "mssql.mssql.svc.cluster.local"
+            database_name: OS2DB
+            database_port: "1433"
+          - dc_database_type: "sqlserver"
+            dc_os_label: "os3"
+            dc_common_os_datasource_name: "FNOS3DS"
+            dc_common_os_xa_datasource_name: "FNOS3DSXA"
+            database_servername: "mssql.mssql.svc.cluster.local"
+            database_name: OS3DB
+            database_port: "1433"
+          - dc_database_type: "sqlserver"
+            dc_os_label: "os4"
+            dc_common_os_datasource_name: "FNOS4DS"
+            dc_common_os_xa_datasource_name: "FNOS4DSXA"
+            database_servername: "mssql.mssql.svc.cluster.local"
+            database_name: OS4DB
+            database_port: "1433"
+          - dc_database_type: "sqlserver"
+            dc_os_label: "os5"
+            dc_common_os_datasource_name: "FNOS5DS"
+            dc_common_os_xa_datasource_name: "FNOS5DSXA"
+            database_servername: "mssql.mssql.svc.cluster.local"
+            database_name: OS5DB
+            database_port: "1433"
+        dc_icn_datasource:
+          dc_database_type: "sqlserver"
+          dc_common_icn_datasource_name: "ECMClientDS"
+          database_servername: "mssql.mssql.svc.cluster.local"
+          database_port: "1433"
+          database_name: ICNDB
+      ecm_configuration:
+        fncm_secret_name: ibm-fncm-secret
+        ####################################
+        ## Start of configuration for CPE ##
+        ####################################
+        cpe:
+          ## The architecture of the cluster.  This is the default for Linux on x86 and should not be changed.
+          arch:
+            amd64: "3 - Most preferred"
+
+          ## The number of replicas or pods to be deployed.  The default is 1 replica and for high availability in a production env,
+          ## it is recommended to have 2 or more.
+          replica_count: 2
+
+          ## This is the image repository and tag that correspond to image registry, which is where the image will be pulled.
+          image:
+            ## The default repository is the IBM Entitled Registry.
+            repository: cp.icr.io/cp/cp4a/fncm/cpe
+            tag: "23.0.2-IF003"
+
+            ## This will override the image pull policy in the shared_configuration.
+            pull_policy: IfNotPresent
+
+          ## Logging for workloads.  This is the default setting.
+          log:
+            format: json
+
+          ## Set securityContext for CPE deployment.
+          security_context:
+            ## Controls which group IDs containers add. For example "supplemental_groups: [1000620001,1000620002]"
+            supplemental_groups:
+            ## This can take an array of key value pairs to assign SELinux labels to a Container, for example
+            ## selinux_options:
+              ## level: "s0:c123,c456"
+              ## type: "spc_t
+            selinux_options:
+            # Defines behavior for changing ownership and permission of the volume before being exposed inside a Pod. This field has two possible values (Always,OnRootMismatch)
+            # For example fs_groupchangepolicy: "OnRootMismatch"
+            fs_groupchangepolicy:
+
+          ## The initial resources (CPU, memory, and ephemeral storage) requests and limits.  If more resources are needed,
+          ## make the changes here to meet your requirement.
+          resources:
+            requests:
+              cpu: 1
+              memory: 3072Mi
+              ephemeral_storage: 4Gi
+            limits:
+              cpu: 1
+              memory: 3072Mi
+              ephemeral_storage: 4Gi
+
+          ## By default "Autoscaling" is disabled (i.e., enabled: false).  If you enable auto_scaling (i.e., enabled: true), be sure to 
+          ## provide values for max_replicas, min_replicas, and target_cpu_utilization_percentage.
+          auto_scaling:
+            enabled: false
+            max_replicas: "5"
+            min_replicas: "3"
+            ## This is the default cpu percentage before autoscaling occurs.
+            target_cpu_utilization_percentage: "80"
+
+          ## Below are the default CPE Production settings.  Make the necessary changes as you see fit.  Refer to Knowledge Center documentation for details.
+          cpe_production_setting:
+            time_zone: Etc/UTC
+
+            ## The initial use of available memory.
+            jvm_initial_heap_percentage: 18
+            ## The maximum percentage of available memory to use.
+            jvm_max_heap_percentage: 33
+
+            ## Use this "jvm_customize_options" parameter to specify JVM arguments using comma separation. For example, if you want to set the following JVM arguments:
+            ##  -Dmy.test.jvm.arg1=123
+            ##  -Dmy.test.jvm.arg2=abc
+            ##  -XX:+SomeJVMSettings
+            ##  -XshowSettings:vm"
+            ## Then set the following: jvm_customize_options="-Dmy.test.jvm.arg1=123,-Dmy.test.jvm.arg2=abc,-XX:+SomeJVMSettings,-XshowSettings:vm"
+            ## If your JVM option contains comma then you have to include 'DELIM=;' to use a different separator, for example jvm_customize_options="DELIM=;-Dmy.test.jvm.arg1=123;-Dcom.filenet.authentication.wsi.AuthTokenOrder=oauth,oidc,ltpa". Semicolon can be replaced with any other char.
+            ## If your JVM option contains double quotes then you need to escape it like this: jvm_customize_options="-Dsettings.navigator.default=logging.level={\"_value\":\"4\",\"_mergeOption\":\"replace\"}"
+
+            jvm_customize_options:
+
+            ## Default JNDI name for GCD for non-XA data source
+            gcd_jndi_name: FNGCDDS
+            ## Default JNDI name for GCD for XA data source
+            gcd_jndixa_name: FNGCDDSXA
+            license_model: FNCM.PVUNonProd
+
+            ## GCD schema name - uncomment below code and update it's value with your custom GCD Schema name
+            # gcd_schema:
+
+            # The license must be set to "accept" in order for the component to install.  This is the default value.
+            license: accept
+
+            # This section is optional and it takes a list of configmaps. 
+            # A configmap can hold files or environment data but it cannot a mix of both.
+            # The volume_path is optional for a configmap that holds files as its data and if it's not specified,
+            # then the files will be mounted to the overrides directory.  If the configmap data holds environment variables
+            # then is_env is required and set it to true.
+            #
+            # custom_configmap:
+            #  - name: <name of configmap>
+            #    volume_path:  # optional
+            #  - name: <name of configmap>
+            #    is_env: # required if the configmap holds environment variables.
+
+            # This section you can set custom environments in the CR for the deployment
+            # custom_env_var:
+            # - some_custom_var_name: "some_custom_var_value"
+
+          ## Enable/disable monitoring where metrics can be sent to Graphite or scraped by Prometheus
+          monitor_enabled: false
+          ## Enable/disable logging where logs can be sent to Elasticsearch.
+          logging_enabled: false
+
+          ## By default, the plugin for Graphite is enable to emit container metrics.
+          collectd_enable_plugin_write_graphite: false
+
+          ## Persistent Volume Claims for CPE.  If the storage_configuration in the shared_configuration is configured,
+          ## the Operator will create the PVC using the names below.
+          datavolume:
+            existing_pvc_for_cpe_cfgstore: 
+              name: "cpe-cfgstore"
+              size: 1Gi
+            existing_pvc_for_cpe_logstore: 
+              name: "cpe-logstore"
+              size: 1Gi
+            existing_pvc_for_cpe_filestore: 
+              name: "cpe-filestore"
+              size: 1Gi
+            existing_pvc_for_cpe_icmrulestore: 
+              name: "cpe-icmrulesstore"
+              size: 1Gi
+            existing_pvc_for_cpe_textextstore: 
+              name: "cpe-textextstore"
+              size: 3Gi
+            existing_pvc_for_cpe_bootstrapstore: 
+              name: "cpe-bootstrapstore"
+              size: 1Gi
+            existing_pvc_for_cpe_fnlogstore: 
+              name: "cpe-fnlogstore"
+              size: 1Gi
+
+          ## Default values for both rediness and liveness probes.  Modify these values to meet your requirements.
+          probe:
+            startup:
+              initial_delay_seconds: 120
+              period_seconds: 30
+              timeout_seconds: 10
+              failure_threshold: 16
+            readiness:
+              period_seconds: 30
+              timeout_seconds: 10
+              failure_threshold: 6
+            liveness:
+              period_seconds: 30
+              timeout_seconds: 5
+              failure_threshold: 6
+
+          ## Only use this parameter if you want to override the image_pull_secrets setting in the shared_configuration above.
+          image_pull_secrets:
+            name: "ibm-entitlement-key"
+
+          ## This is only used to deploy CPE in AWS EKS Cluster, and it will create and mount aws-iam-token.
+          #aws_iam:
+          #  aws_iam_enable: true
+          #  audience: "sts.amazonaws.com"
+          #  expirationSeconds: 7200 
+
+
+        ########################################
+        ## Start of configuration for GraphQL ##
+        ########################################
+        graphql:
+          graphql_production_setting:
+            enable_graph_iql: true
+      ########################################################################
+      ########   IBM Business Automation Navigator configuration      ########
+      ########################################################################
+      navigator_configuration:
+        icn_production_setting:
+          icn_table_space: ICNDB
+          ## uncomment copy_files_to_war parameter to copy customized files into Navigator web application.
+          ## The <custom-dir>/navigator_war_filesources.xml must be located in config volume mapping, which is /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides
+          copy_files_to_war: navigator_war_filesources.xml
+      ########################################################################
+      ######## IBM FileNet Content Manager Initialization configuration ######
+      ########################################################################
+      ## The deployment of FNCM will be initialized with the default values assigned to the parameters below.
+      ## The initialization process includes the creation of the P8 domain, the creation of the directory services,
+      ## the assignments of users/groups to the P8 domain and object store(s), the creation of the object store(s),
+      ## the creation/addition of add-ons for each object store, the enablement of workflow for each object store, the
+      ## creation of Content Search Services servers, index areas, and the enabling of Content-based Retrieval (CBR) for each object store.
+      ## In addition, the creation of Navigator desktop will also occur.
+      ## If any of the values below does not fit your infrastructure, then change the value to correpond to your configuration
+      ## (e.g., "CEAdmin" is the default user for ic_ldap_admin_user_name parameter and if you do not have "CEAdmin" user in your directory
+      ## server and have a different user, then replace "CEAdmin" with your own user).  Otherwise, the rest of the values should remain as default.
+      initialize_configuration:
+        ic_domain_creation:
+          domain_name: "P8DOMAIN"
+          encryption_key: "128"
+        ic_ldap_creation:
+          ic_ldap_admin_user_name:
+          - "cpadmin" # user name for P8 domain admin, for example, "CEAdmin".  This parameter accepts a list of values.
+          ic_ldap_admins_groups_name:
+          - "cpadmins" # group name for P8 domain admin, for example, "P8Administrators".  This parameter accepts a list of values.
+          ic_ldap_name: "ldap"
+        ic_obj_store_creation:
+          object_stores:
+          - oc_cpe_obj_store_display_name: OS1
+            oc_cpe_obj_store_symb_name: OS1
+            oc_cpe_obj_store_conn:
+              name: OS1_dbconnection
+              dc_os_datasource_name: FNOS1DS
+              dc_os_xa_datasource_name: FNOS1DSXA
+            oc_cpe_obj_store_admin_user_groups:
+            - "cpadmins"
+            oc_cpe_obj_store_enable_content_event_emitter: true
+            oc_cpe_obj_store_addons_list:
+              - "{CE460ADD-0000-0000-0000-000000000004}" # 5.2.1 Base Application Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000001}" # 5.2.1 Base Content Engine Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000003}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000006}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000008}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000007}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000009}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000A}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000B}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000D}" # (default)
+              - "{CE511ADD-0000-0000-0000-00000000000F}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000010}" # 5.2.1 Teamspace Extensions
+              - "{CE511ADD-0000-0000-0000-000000000015}" # 5.2.1 Custom Role Extensions
+              - "{CE521ADD-0000-0000-0000-000000000016}" # 5.2.1 Social Collaboration Role Extensions
+              - "{CE552ADD-0000-0000-0000-00000000001C}" # 5.5.2 Core Collaboration Extensions
+              - "{CE551ADD-0000-0000-0000-000000000011}" # 5.5.1 Social Collaboration Base Extensions
+              - "{CE554ADD-0000-0000-0000-000000000021}" # 5.5.4 Event-Driven External Service Invocation Extensions
+          - oc_cpe_obj_store_display_name: OS2
+            oc_cpe_obj_store_symb_name: OS2
+            oc_cpe_obj_store_conn:
+              name: OS2_dbconnection
+              dc_os_datasource_name: FNOS2DS
+              dc_os_xa_datasource_name: FNOS2DSXA
+            oc_cpe_obj_store_admin_user_groups:
+            - "cpadmins"
+            oc_cpe_obj_store_enable_content_event_emitter: true
+            oc_cpe_obj_store_addons_list:
+              - "{CE460ADD-0000-0000-0000-000000000004}" # 5.2.1 Base Application Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000001}" # 5.2.1 Base Content Engine Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000003}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000006}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000008}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000007}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000009}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000A}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000B}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000D}" # (default)
+              - "{CE511ADD-0000-0000-0000-00000000000F}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000010}" # 5.2.1 Teamspace Extensions
+              - "{CE511ADD-0000-0000-0000-000000000015}" # 5.2.1 Custom Role Extensions
+              - "{CE521ADD-0000-0000-0000-000000000016}" # 5.2.1 Social Collaboration Role Extensions
+              - "{CE552ADD-0000-0000-0000-00000000001C}" # 5.5.2 Core Collaboration Extensions
+              - "{CE551ADD-0000-0000-0000-000000000011}" # 5.5.1 Social Collaboration Base Extensions
+              - "{CE554ADD-0000-0000-0000-000000000021}" # 5.5.4 Event-Driven External Service Invocation Extensions
+          - oc_cpe_obj_store_display_name: OS3
+            oc_cpe_obj_store_symb_name: OS3
+            oc_cpe_obj_store_conn:
+              name: OS3_dbconnection
+              dc_os_datasource_name: FNOS3DS
+              dc_os_xa_datasource_name: FNOS3DSXA
+            oc_cpe_obj_store_admin_user_groups:
+            - "cpadmins"
+            oc_cpe_obj_store_enable_content_event_emitter: true
+            oc_cpe_obj_store_addons_list:
+              - "{CE460ADD-0000-0000-0000-000000000004}" # 5.2.1 Base Application Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000001}" # 5.2.1 Base Content Engine Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000003}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000006}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000008}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000007}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000009}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000A}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000B}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000D}" # (default)
+              - "{CE511ADD-0000-0000-0000-00000000000F}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000010}" # 5.2.1 Teamspace Extensions
+              - "{CE511ADD-0000-0000-0000-000000000015}" # 5.2.1 Custom Role Extensions
+              - "{CE521ADD-0000-0000-0000-000000000016}" # 5.2.1 Social Collaboration Role Extensions
+              - "{CE552ADD-0000-0000-0000-00000000001C}" # 5.5.2 Core Collaboration Extensions
+              - "{CE551ADD-0000-0000-0000-000000000011}" # 5.5.1 Social Collaboration Base Extensions
+              - "{CE554ADD-0000-0000-0000-000000000021}" # 5.5.4 Event-Driven External Service Invocation Extensions
+          - oc_cpe_obj_store_display_name: OS4
+            oc_cpe_obj_store_symb_name: OS4
+            oc_cpe_obj_store_conn:
+              name: OS4_dbconnection
+              dc_os_datasource_name: FNOS4DS
+              dc_os_xa_datasource_name: FNOS4DSXA
+            oc_cpe_obj_store_admin_user_groups:
+            - "cpadmins"
+            oc_cpe_obj_store_enable_content_event_emitter: true
+            oc_cpe_obj_store_addons_list:
+              - "{CE460ADD-0000-0000-0000-000000000004}" # 5.2.1 Base Application Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000001}" # 5.2.1 Base Content Engine Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000003}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000006}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000008}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000007}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000009}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000A}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000B}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000D}" # (default)
+              - "{CE511ADD-0000-0000-0000-00000000000F}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000010}" # 5.2.1 Teamspace Extensions
+              - "{CE511ADD-0000-0000-0000-000000000015}" # 5.2.1 Custom Role Extensions
+              - "{CE521ADD-0000-0000-0000-000000000016}" # 5.2.1 Social Collaboration Role Extensions
+              - "{CE552ADD-0000-0000-0000-00000000001C}" # 5.5.2 Core Collaboration Extensions
+              - "{CE551ADD-0000-0000-0000-000000000011}" # 5.5.1 Social Collaboration Base Extensions
+              - "{CE554ADD-0000-0000-0000-000000000021}" # 5.5.4 Event-Driven External Service Invocation Extensions
+          - oc_cpe_obj_store_display_name: OS5
+            oc_cpe_obj_store_symb_name: OS5
+            oc_cpe_obj_store_conn:
+              name: OS5_dbconnection
+              dc_os_datasource_name: FNOS5DS
+              dc_os_xa_datasource_name: FNOS5DSXA
+            oc_cpe_obj_store_admin_user_groups:
+            - "cpadmins"
+            oc_cpe_obj_store_enable_content_event_emitter: true
+            oc_cpe_obj_store_addons_list:
+              - "{CE460ADD-0000-0000-0000-000000000004}" # 5.2.1 Base Application Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000001}" # 5.2.1 Base Content Engine Extensions (default)
+              - "{CE460ADD-0000-0000-0000-000000000003}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000006}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000008}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000007}" # (default)
+              - "{CE460ADD-0000-0000-0000-000000000009}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000A}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000B}" # (default)
+              - "{CE460ADD-0000-0000-0000-00000000000D}" # (default)
+              - "{CE511ADD-0000-0000-0000-00000000000F}" # (default)
+              - "{CE511ADD-0000-0000-0000-000000000010}" # 5.2.1 Teamspace Extensions
+              - "{CE511ADD-0000-0000-0000-000000000015}" # 5.2.1 Custom Role Extensions
+              - "{CE521ADD-0000-0000-0000-000000000016}" # 5.2.1 Social Collaboration Role Extensions
+              - "{CE552ADD-0000-0000-0000-00000000001C}" # 5.5.2 Core Collaboration Extensions
+              - "{CE551ADD-0000-0000-0000-000000000011}" # 5.5.1 Social Collaboration Base Extensions
+              - "{CE554ADD-0000-0000-0000-000000000021}" # 5.5.4 Event-Driven External Service Invocation Extensions
+        ic_css_creation:
+          - css_text_search_server_name: "icp4adeploy-css-1"
+        ic_css_index_area:
+          - index_area_name: os1_index_area
+            object_store_name: OS1
+          - index_area_name: os2_index_area
+            object_store_name: OS2
+          - index_area_name: os3_index_area
+            object_store_name: OS3
+          - index_area_name: os4_index_area
+            object_store_name: OS4
+          - index_area_name: os5_index_area
+            object_store_name: OS5
+
+        ic_enable_cbr:
+          - object_store_name: "OS1"
+          - object_store_name: "OS2"
+          - object_store_name: "OS3"
+          - object_store_name: "OS4"
+          - object_store_name: "OS5"
+        ic_icn_init_info:
+          icn_repos:
+          - add_repo_id: "OS1"
+            add_repo_os_sym_name: "OS1"
+            add_repo_os_dis_name: "OS1"
+          - add_repo_id: "OS2"
+            add_repo_os_sym_name: "OS2"
+            add_repo_os_dis_name: "OS2"
+          - add_repo_id: "OS3"
+            add_repo_os_sym_name: "OS3"
+            add_repo_os_dis_name: "OS3"
+          - add_repo_id: "OS4"
+            add_repo_os_sym_name: "OS4"
+            add_repo_os_dis_name: "OS4"
+          - add_repo_id: "OS5"
+            add_repo_os_sym_name: "OS5"
+            add_repo_os_dis_name: "OS5"
+          icn_desktop:
+          - add_desktop_id: "OS1"
+            add_desktop_name: "OS1"
+            add_desktop_description: "This is OS1 desktop"
+            add_desktop_repo_id: "OS1"
+          - add_desktop_id: "OS2"
+            add_desktop_name: "OS2"
+            add_desktop_description: "This is OS2 desktop"
+            add_desktop_repo_id: "OS2"
+          - add_desktop_id: "OS3"
+            add_desktop_name: "OS3"
+            add_desktop_description: "This is OS3 desktop"
+            add_desktop_repo_id: "OS3"
+          - add_desktop_id: "OS4"
+            add_desktop_name: "OS4"
+            add_desktop_description: "This is OS4 desktop"
+            add_desktop_repo_id: "OS4"
+          - add_desktop_id: "OS5"
+            add_desktop_name: "OS5"
+            add_desktop_description: "This is OS5 desktop"
+            add_desktop_repo_id: "OS5"                
+      ########################################################################
+      ######## IBM FileNet Content Manager Verification configuration ######
+      ########################################################################
+      ## After the initialization process (see section above), the verification process will take place.
+      ## The verification process ensures that the FNCM and BAN components are functioning correctly.  The verification
+      ## process includes creation of a CPE folder, a CPE document, a CBR search, verifying the workflow configuration,
+      ## and validation of the ICN desktop.
+      verify_configuration:
+        vc_cpe_verification:
+          vc_cpe_cbr:
+          - cbr_cpe_obj_store_name: "OS1"
+          - cbr_cpe_obj_store_name: "OS2"
+          - cbr_cpe_obj_store_name: "OS3"
+          - cbr_cpe_obj_store_name: "OS4"
+          - cbr_cpe_obj_store_name: "OS5"
+        vc_icn_verification:
+          - vc_icn_repository: "OS1"
+            vc_icn_desktop_id: "OS1"
+          - vc_icn_repository: "OS2"
+            vc_icn_desktop_id: "OS2"
+          - vc_icn_repository: "OS3"
+            vc_icn_desktop_id: "OS3"
+          - vc_icn_repository: "OS4"
+            vc_icn_desktop_id: "OS4"
+          - vc_icn_repository: "OS5"
+            vc_icn_desktop_id: "OS5"
+parameters:
+  - name: DB2_HOST
+  - name: LDAP_HOST
+  - name: FILE_STORAGE_CLASSNAME
+  - name: BLOCK_STORAGE_CLASSNAME
